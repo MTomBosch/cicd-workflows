@@ -263,6 +263,12 @@ run_component() {
     "--manifest-file" "${manifest_file}"
   )
 
+  # Workflow components use generated temp config/manifest files that only exist locally.
+  # Force local mode so release-please does not try to fetch these files from target branch.
+  if [[ "${component_type}" == "workflow" ]]; then
+    base_args+=("--local")
+  fi
+
   if [[ -n "${token}" ]]; then
     base_args+=("--token" "${token}")
   fi
