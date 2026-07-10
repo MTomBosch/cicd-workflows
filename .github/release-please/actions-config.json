@@ -8,7 +8,7 @@
       "tag-separator": "/",
       "changelog-path": "deploy-versioned-pages_changelog.md",
       "initial-version": "1.0.0",
-      "version-file": "../release-please/action-versions/deploy-versioned-pages.txt"
+      "version-file": "release-please-version.txt"
     }
   }
 }
