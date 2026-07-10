@@ -1,0 +1,60 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+    paths:
+      - .github/workflows/*.yml
+      - .github/workflows/*_changelog.md
+      - .github/release-please/**
+  workflow_dispatch:
+    inputs:
+      components:
+        description: Comma-separated component names to release. Empty means all components.
+        required: false
+        type: string
+        default: docs
+      dry-run:
+        description: Run Release Please in dry-run mode.
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Release Please
+        shell: bash
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          INPUT_COMPONENTS: ${{ inputs.components }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+
+          args=(
+            --repo-url "${{ github.repository }}"
+            --target-branch "${{ github.ref_name }}"
+          )
+
+          if [[ "${INPUT_DRY_RUN:-false}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+
+          if [[ -n "${INPUT_COMPONENTS:-}" ]]; then
+            args+=(--components "${INPUT_COMPONENTS}")
+          else
+            args+=(--all)
+          fi
+
+          bash .github/release-please/run-release-please.sh "${args[@]}"
