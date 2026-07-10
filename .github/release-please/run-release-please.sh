@@ -33,7 +33,7 @@ Options:
   --component <name>   Release only one component (workflow or action).
   --components <list>  Release comma-separated component list (workflows and/or actions).
   --all-workflows      Release all components (workflows and actions).
-  --mode <mode>        One of: pr, release, both. Default: both.
+  --mode <mode>        One of: pr, release. Required.
   --dry-run            Prepare actions but do not create/update PRs or releases.
   --repo-url <owner/repo>
                        GitHub repository. Default: inferred from origin remote.
@@ -99,7 +99,7 @@ detect_component_type() {
 
   # Check if it's an action by folder existence
   local action_dir="${REPO_ROOT}/${actions_root}/${component}"
-  if [[ -d "${action_dir}" && -f "${action_dir}/release-please-manifest.json" ]]; then
+  if [[ -d "${action_dir}" && -f "${SCRIPT_DIR}/actions-manifest.json" ]]; then
     echo "action"
     return 0
   fi
@@ -235,7 +235,7 @@ run_component() {
     # For actions, use original files from repository
     local action_dir="${REPO_ROOT}/${actions_root}/${component}"
     local central_config="${SCRIPT_DIR}/actions-config.json"
-    local source_manifest="${action_dir}/release-please-manifest.json"
+    local source_manifest="${SCRIPT_DIR}/actions-manifest.json"
 
     # Verify action files are present (folder already checked in detect_component_type)
     if [[ ! -f "${central_config}" ]]; then
@@ -289,7 +289,7 @@ run_component() {
 
   echo "==> component=${component} type=${component_type} mode=${mode} dry-run=${dry_run}"
 
-  if [[ "${mode}" == "pr" || "${mode}" == "both" ]]; then
+  if [[ "${mode}" == "pr" ]]; then
     echo "==> running release-please release-pr for component=${component}"
     echo "==> base_args: ${base_args[*]}"
     if [[ -n "${HTTP_PROXY:-}" ]]; then
@@ -299,7 +299,7 @@ run_component() {
     fi
   fi
 
-  if [[ "${mode}" == "release" || "${mode}" == "both" ]]; then
+  if [[ "${mode}" == "release" ]]; then
     echo "==> running release-please github-release for component=${component}"
     echo "==> base_args: ${base_args[*]}"
     if [[ -n "${HTTP_PROXY:-}" ]]; then
@@ -317,7 +317,7 @@ require_cmd npx
 component=""
 components=""
 run_all="false"
-mode="both"
+mode=""
 dry_run="false"
 repo_url=""
 target_branch=""
@@ -374,8 +374,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "${mode}" != "pr" && "${mode}" != "release" && "${mode}" != "both" ]]; then
-  err "--mode must be one of: pr, release, both"
+if [[ -z "${mode}" ]]; then
+  err "--mode is required; must be one of: pr, release"
+  exit 2
+fi
+
+if [[ "${mode}" != "pr" && "${mode}" != "release" ]]; then
+  err "--mode must be one of: pr, release"
   exit 2
 fi
 
