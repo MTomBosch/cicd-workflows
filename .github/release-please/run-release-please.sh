@@ -292,13 +292,21 @@ run_component() {
   if [[ "${mode}" == "pr" || "${mode}" == "both" ]]; then
     echo "==> running release-please release-pr for component=${component}"
     echo "==> base_args: ${base_args[*]}"
-    npx --yes release-please release-pr "${base_args[@]}"
+    if [[ -n "${HTTP_PROXY:-}" ]]; then
+      NODE_USE_ENV_PROXY=1 npx --yes release-please release-pr "${base_args[@]}"
+    else
+      npx --yes release-please release-pr "${base_args[@]}"
+    fi
   fi
 
   if [[ "${mode}" == "release" || "${mode}" == "both" ]]; then
     echo "==> running release-please github-release for component=${component}"
     echo "==> base_args: ${base_args[*]}"
-    npx --yes release-please github-release "${base_args[@]}"
+    if [[ -n "${HTTP_PROXY:-}" ]]; then
+      NODE_USE_ENV_PROXY=1 npx --yes release-please github-release "${base_args[@]}"
+    else
+      npx --yes release-please github-release "${base_args[@]}"
+    fi
   fi
 }
 
@@ -404,6 +412,10 @@ fi
 if [[ -z "${repo_url}" ]]; then
   err "cannot infer --repo-url from origin remote; provide --repo-url <owner/repo>"
   exit 2
+fi
+
+if [[ -z "${target_branch}" ]]; then
+  target_branch="$(git -C "${REPO_ROOT}" branch --show-current 2>/dev/null || true)"
 fi
 
 if [[ -z "${token}" ]]; then
