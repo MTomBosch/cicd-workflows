@@ -204,6 +204,7 @@ run_component() {
   fi
 
   local workflowFile uuid timestamp tmp_dir tmp_config tmp_manifest config_file manifest_file
+  local config_file_arg manifest_file_arg
 
   if [[ "${component_type}" == "workflow" ]]; then
     workflowFile="${component}.yml"
@@ -256,17 +257,22 @@ run_component() {
     fi
   fi
 
+  # release-please expects config/manifest paths relative to workspace root.
+  config_file_arg="${config_file#${REPO_ROOT}/}"
+  manifest_file_arg="${manifest_file#${REPO_ROOT}/}"
+
   local -a base_args
   base_args=(
     "--repo-url" "${repo_url}"
-    "--config-file" "${config_file}"
-    "--manifest-file" "${manifest_file}"
+    "--config-file" "${config_file_arg}"
+    "--manifest-file" "${manifest_file_arg}"
   )
 
   # Workflow components use generated temp config/manifest files that only exist locally.
   # Force local mode so release-please does not try to fetch these files from target branch.
   if [[ "${component_type}" == "workflow" ]]; then
     base_args+=("--local")
+    base_args+=("--local-path" "${REPO_ROOT}")
   fi
 
   if [[ -n "${token}" ]]; then
