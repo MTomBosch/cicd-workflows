@@ -15,7 +15,7 @@ on:
         description: Comma-separated component names to release. Empty means all components.
         required: false
         type: string
-        default: docs
+        default: "docs"
       dry-run:
         description: Run Release Please in dry-run mode.
         required: false
@@ -54,7 +54,7 @@ jobs:
           if [[ -n "${INPUT_COMPONENTS:-}" ]]; then
             args+=(--components "${INPUT_COMPONENTS}")
           else
-            args+=(--all)
+            args+=(--all-workflows)
           fi
 
           bash .github/release-please/run-release-please.sh "${args[@]}"
