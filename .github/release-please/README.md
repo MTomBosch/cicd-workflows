@@ -21,8 +21,8 @@ Instead of static Release Please manifest files, this setup uses:
 - `versions/<component>.txt`: current version seed per workflow component.
 - `<workflow>_changelog.md`: workflow-specific changelog file next to the workflow.
 - `actions-config.json`: Release Please configuration for all composite actions.
-- `.github/actions/<action-name>/release-please-manifest.json`: Release Please manifest for each composite action.
-- `run-release-please.sh`: generates temporary config/manifest for workflows or copies action configs, then runs Release Please.
+- `actions-manifest.json`: Release Please manifest for all composite actions (shared, not per-action).
+- `run-release-please.sh`: generates temporary config/manifest for workflows or uses the static action config/manifest files, then runs Release Please.
 
 ## Files
 
@@ -38,13 +38,14 @@ Instead of static Release Please manifest files, this setup uses:
 
 - `.github/release-please/actions-config.json`
   - Central Release Please configuration for all composite actions.
-  - Defines Release Please metadata (packages, release-type, component, etc.).
-  - Shared across all composite action components to ensure consistent Release Please behavior.
+  - Defines Release Please metadata (packages, release-type, component, changelog-path, etc.) for each action.
+  - Statically maintained: add a new `packages` entry here when adding a new composite action.
 
-- `.github/actions/<action-name>/release-please-manifest.json`
-  - Release Please manifest for an individual composite action.
-  - Tracks the current version of the specific composite action.
-  - One manifest file per action folder.
+- `.github/release-please/actions-manifest.json`
+  - Shared Release Please manifest for all composite actions.
+  - Tracks the current version of each composite action, keyed by the action's path under `.github/actions/`.
+  - Updated by Release Please automatically after each release.
+  - Statically maintained: add a new entry here when adding a new composite action.
 
 - `.github/workflows/*_changelog.md`
   - One changelog file per workflow.
@@ -61,11 +62,12 @@ Instead of static Release Please manifest files, this setup uses:
 
 ## How The Script Works
 
-For a selected component, the script first auto-detects whether it's a **workflow**:
+For a selected component, the script auto-detects its type:
 
-- **Workflow**: Component name exists in `workflows.json` under the `workflows` array with a `workflowFile`.
+- **Workflow**: component name is found in `workflows.json` under the `workflows` array with a matching `workflowFile`.
+- **Action**: the component's folder exists under the actions root (default `.github/actions/<component>`) and `.github/release-please/actions-manifest.json` is present.
 
-The `--all-workflows` flag only processes workflow components defined in `workflows.json`.
+The `--all-workflows` flag only processes workflow components defined in `workflows.json`; actions are never auto-discovered and must be named explicitly.
 
 ### For Workflows:
 
@@ -92,24 +94,32 @@ version-file: ../release-please/versions/<component>.txt
 
    - `release-pr` (create/update release PR)
    - `github-release` (create tag + GitHub release)
-   - controlled by `--mode pr|release|both`.
+   - controlled by `--mode pr|release`.
 
 Resulting tag/release naming for workflows:
 
 - `<workflow-name>/vX.Y.Z` (e.g., `docs/v2.5.1`)
 
-## Manual Action Release (via --component or --components)
+## Releasing Actions (via --components)
 
-Composite actions can still be released manually by specifying them directly via `--component` or `--components`. When an action is specified:
+Composite actions are released by specifying them directly via `--components`. Their Release Please configuration is **statically defined** in two files that live alongside the script — no temporary files are generated:
 
-1. Uses the Release Please configuration and manifest files directly from the repository (no temp files):
-   - Central config: `.github/release-please/actions-config.json`
-   - Per-action manifest: `.github/actions/<action-name>/release-please-manifest.json`
+| File                                           | Purpose                                                                                 |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `.github/release-please/actions-config.json`   | Package metadata for every action (release-type, changelog-path, initial-version, etc.) |
+| `.github/release-please/actions-manifest.json` | Current version of every action, keyed by action path                                   |
+
+When adding a new composite action, add a `packages` entry to `actions-config.json` and a version entry to `actions-manifest.json` — no other file changes are needed.
+
+When an action component is selected, the script:
+
+1. Verifies the action folder exists under the actions root and that `actions-manifest.json` is present.
+1. Passes the static `actions-config.json` and `actions-manifest.json` directly to Release Please (no temp files).
 1. Executes Release Please:
 
    - `release-pr` (create/update release PR)
    - `github-release` (create tag + GitHub release)
-   - controlled by `--mode pr|release|both`.
+   - controlled by `--mode pr|release`.
 
 Resulting tag/release naming for actions:
 
@@ -132,25 +142,31 @@ Therefore, the script generates component-scoped temporary config/manifest files
 Run one workflow component in dry-run mode:
 
 ```bash
-.github/release-please/run-release-please.sh --component docs --dry-run
+.github/release-please/run-release-please.sh --components docs --dry-run
 ```
 
-Run one composite action manually in dry-run mode (actions are not auto-discovered):
+Run one composite action manually in dry-run mode:
 
 ```bash
-.github/release-please/run-release-please.sh --component deploy-versioned-pages --dry-run
+.github/release-please/run-release-please.sh --components deploy-versioned-pages --dry-run
 ```
 
-Run one workflow component normally:
+Run one workflow component — create/update the release PR:
 
 ```bash
-.github/release-please/run-release-please.sh --component qnx-build --mode both
+.github/release-please/run-release-please.sh --components qnx-build --mode pr
 ```
 
-Run an explicit list of components (workflows and/or actions manually specified):
+Run one workflow component — create the GitHub release after the PR is merged:
 
 ```bash
-.github/release-please/run-release-please.sh --components docs,qnx-build,deploy-versioned-pages --mode both
+.github/release-please/run-release-please.sh --components qnx-build --mode release
+```
+
+Run an explicit list of components (workflows and/or actions):
+
+```bash
+.github/release-please/run-release-please.sh --components docs,qnx-build,deploy-versioned-pages --mode pr
 ```
 
 Run all workflow components in dry-run mode (--all-workflows only processes workflows):
@@ -161,10 +177,9 @@ Run all workflow components in dry-run mode (--all-workflows only processes work
 
 Useful options:
 
-- `--component <name>` — Release a single component (workflow or action)
-- `--components <name1,name2,...>` — Release multiple components (mixed workflows and actions)
+- `--components <name1,name2,...>` — Release one or more components (comma-separated; workflows and/or actions)
 - `--all-workflows` — Release all workflow components (not actions)
-- `--mode pr|release|both` — Release Please operation mode (default: both)
+- `--mode pr|release` — Release Please operation mode. Required.
 - `--dry-run` — Prepare configs but don't create/update PRs or releases
 - `--repo-url <owner/repo>` — GitHub repository (auto-detected from origin if not provided)
 - `--target-branch <branch>` — Target branch for PRs/releases
@@ -173,7 +188,7 @@ Useful options:
 
 ## Component Validation and Mixed Types
 
-When using `--components` with multiple items, the script validates all components upfront:
+When using `--components`, the script validates all components upfront:
 
 1. **Validation Phase**: Each component is checked to determine if it's a workflow, action, or invalid.
 2. **Error Reporting**: Any invalid components are reported immediately with clear error messages.
@@ -199,7 +214,7 @@ This ensures you get clear feedback about which components are problematic befor
 By default, composite actions are expected in `.github/actions/`. If your composite actions are stored in a different location, use the `--actions-root` option:
 
 ```bash
-.github/release-please/run-release-please.sh --component deploy-versioned-pages --actions-root .github/my-actions --dry-run
+.github/release-please/run-release-please.sh --components deploy-versioned-pages --actions-root .github/my-actions --dry-run
 ```
 
 ## GitHub Actions Integration

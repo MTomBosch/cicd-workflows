@@ -7,8 +7,7 @@
       "include-v-in-tag": true,
       "tag-separator": "/",
       "changelog-path": "deploy-versioned-pages_changelog.md",
-      "initial-version": "1.0.0",
-      "version-file": "release-please-version.txt"
+      "initial-version": "1.0.0"
     }
   }
 }
