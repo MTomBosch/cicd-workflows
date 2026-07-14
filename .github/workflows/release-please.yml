@@ -11,6 +11,7 @@ on:
         description: Type of component to release.
         required: true
         type: choice
+        default: action
         options:
           - workflow
           - action
@@ -31,11 +32,6 @@ on:
         options:
           - pr
           - release
-      dry-run:
-        description: Run Release Please in dry-run mode without creating PRs or releases.
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -63,7 +59,6 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
           manifest-file: ${{ inputs.manifest-json-path }}
-          dry-run: ${{ inputs.dry-run }}
 
   action-github-release:
     if: inputs.component-type == 'action' && inputs.mode == 'release'
@@ -74,7 +69,6 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
           manifest-file: ${{ inputs.manifest-json-path }}
-          dry-run: ${{ inputs.dry-run }}
 
   workflow-release-pr:
     needs: check-workflow-config
@@ -86,7 +80,6 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
           manifest-file: ${{ inputs.manifest-json-path }}
-          dry-run: ${{ inputs.dry-run }}
 
   workflow-github-release:
     needs: check-workflow-config
@@ -98,4 +91,3 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
           manifest-file: ${{ inputs.manifest-json-path }}
-          dry-run: ${{ inputs.dry-run }}
