@@ -92,11 +92,18 @@ main() {
   fi
 
   require_cmd jq
+  require_cmd git
 
   local workflow_config_dir="${release_please_config_root}/workflow-config"
   local existing_config="${working_dir}/${workflow_config_dir}/${workflow}-config.json"
   local tmp_config
   tmp_config="$(mktemp --suffix=.json)"
+
+  # Ensure temporary files are removed on every exit path.
+  cleanup() {
+    rm -f "${tmp_config}"
+  }
+  trap cleanup EXIT
 
   (cd "${working_dir}" && "${_SCRIPT_DIR}/gen-release-please-workflow-config.sh" \
     --workflow "${workflow}" \
@@ -106,12 +113,21 @@ main() {
   local existing_normalized fresh_normalized
   existing_normalized="$(jq --sort-keys '.' "${existing_config}")"
   fresh_normalized="$(jq --sort-keys '.' "${tmp_config}")"
-  rm -f "${tmp_config}"
 
   if [[ "${existing_normalized}" != "${fresh_normalized}" ]]; then
     err "workflow config for '${workflow}' is out of date with the current repository content."
     err "The config file must be up to date before a release PR can be created."
     err "To update it, run gen-release-please-workflow-config.sh directly."
+    err "Delta (patch format):"
+
+    local patch_output
+    patch_output="$(git --no-pager diff --no-index --no-color -- "${existing_config}" "${tmp_config}" || true)"
+    if [[ -n "${patch_output}" ]]; then
+      echo "${patch_output}" >&2
+    else
+      # Fallback in environments without git; still emit a unified diff.
+      diff -u --label "a/${workflow_config_dir}/${workflow}-config.json" --label "b/${workflow_config_dir}/${workflow}-config.json" "${existing_config}" "${tmp_config}" >&2 || true
+    fi
     exit 8
   fi
 
