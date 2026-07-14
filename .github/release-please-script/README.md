@@ -42,6 +42,19 @@ All three scripts read from and write to the target repo's working tree.
 it at the target repo on GitHub. `gen-release-please-workflow-config.sh` and
 `check-workflow-config-uptodate.sh` operate on local files only and do not require a GitHub token.
 
+## Token Requirements for `release-please.yml`
+
+When releasing **workflow components**, use an externally provided PAT (for example via
+`RELEASE_PLEASE_TOKEN`) that includes permission to modify workflow files.
+
+Reason: GitHub treats changes under `.github/workflows/` as workflow changes, and the
+repository workflow `permissions:` block alone is not sufficient to grant that capability
+to the default token in this scenario. Therefore, a PAT with the required scope must be
+provided to the release-please action.
+
+When releasing **action components**, the permissions already declared in
+`release-please.yml` are sufficient, and no external PAT is required.
+
 ---
 
 ## What the Script Does
