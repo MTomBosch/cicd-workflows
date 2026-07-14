@@ -7,7 +7,7 @@
       "include-component-in-tag": true,
       "include-v-in-tag": true,
       "tag-separator": "/",
-      "changelog-path": "deploy-versioned-pages_changelog.md",
+      "changelog-path": ".github/actions/deploy-versioned-pages/deploy-versioned-pages_changelog.md",
       "initial-version": "1.0.0"
     }
   }
