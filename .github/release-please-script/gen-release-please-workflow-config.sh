@@ -15,6 +15,7 @@ err() {
 }
 
 WORKFLOWS_PATH=".github/workflows"
+INITIAL_VERSION_DEFAULT="1.0.0"
 
 usage() {
   cat <<'EOF'
@@ -36,7 +37,6 @@ Options:
 Default output paths (relative to the current working directory):
   <release-please-config-root>/workflow-config/<name>-config.json   always written
   <release-please-config-root>/workflow-config/<name>-manifest.json created if absent
-  .github/workflows/<name>_changelog.md                             created if absent
 EOF
 }
 
@@ -47,59 +47,21 @@ require_cmd() {
   fi
 }
 
-# Determine initial-version for a workflow with two-level fallback:
-#   1. Preserve value from existing <workflow>-config.json (so re-generation never resets it)
-#   2. Default to 1.0.0
-get_initial_version() {
-  local wf="$1"
-  local existing="${working_dir}/${workflow_config_dir}/${wf}-config.json"
-  local version
-
-  if [[ -f "${existing}" ]]; then
-    version="$(jq -r '.packages[".github/workflows"]["initial-version"] // empty' "${existing}" 2>/dev/null || true)"
-    if [[ -n "${version}" && "${version}" != "null" ]]; then
-      echo "${version}"
-      return 0
-    fi
-  fi
-
-  echo "1.0.0"
-}
-
-# Preserve the top-level bootstrap-sha from an existing <workflow>-config.json, if present.
-# Returns an empty string when no existing file or no bootstrap-sha field is found.
-get_bootstrap_sha() {
-  local wf="$1"
-  local existing="${working_dir}/${workflow_config_dir}/${wf}-config.json"
-  local sha
-
-  if [[ -f "${existing}" ]]; then
-    sha="$(jq -r '."bootstrap-sha" // empty' "${existing}" 2>/dev/null || true)"
-    if [[ -n "${sha}" && "${sha}" != "null" ]]; then
-      echo "${sha}"
-      return 0
-    fi
-  fi
-
-  echo ""
-}
-
 # Build the exclude-paths JSON array for a workflow by scanning the workflows
-# directory for all *.yml/*.yaml files and excluding the workflow itself.
+# directory for all files and excluding only the workflow file itself.
 compute_exclude_paths() {
   local current_wf_name="$1"
-  local current_wf_file="${current_wf_name}.yml"
+  local current_wf_file_yml="${current_wf_name}.yml"
+  local current_wf_file_yaml="${current_wf_name}.yaml"
   local -a excludes
-  local filepath filename base
+  local filepath filename
 
   while IFS= read -r filepath; do
     filename="$(basename "${filepath}")"
-    if [[ "${filename}" != "${current_wf_file}" ]]; then
-      base="${filename%.*}"
+    if [[ "${filename}" != "${current_wf_file_yml}" && "${filename}" != "${current_wf_file_yaml}" ]]; then
       excludes+=(".github/workflows/${filename}")
-      excludes+=(".github/workflows/${base}_changelog.md")
     fi
-  done < <(find "${working_dir}/${WORKFLOWS_PATH}" -maxdepth 1 \( -name "*.yml" -o -name "*.yaml" \) | sort)
+  done < <(find "${working_dir}/${WORKFLOWS_PATH}" -maxdepth 1 -type f | sort)
 
   if [[ ${#excludes[@]} -gt 0 ]]; then
     printf '%s\n' "${excludes[@]}" | jq -R . | jq -s .
@@ -113,21 +75,33 @@ write_workflow_config_json() {
   local wf="$1"
   local output_file="$2"
   local initial_version="${3:-}"
-  local bootstrap_sha="${4:-}"
   local changelog_path="${wf}_changelog.md"
   local exclude_paths
+  local tmp_updated_file
 
   if [[ -z "${initial_version}" ]]; then
-    initial_version="$(get_initial_version "${wf}")"
+    initial_version="${INITIAL_VERSION_DEFAULT}"
   fi
   exclude_paths="$(compute_exclude_paths "${wf}")"
+
+  # If the config already exists, preserve everything and only refresh exclude-paths.
+  if [[ -f "${output_file}" ]]; then
+    tmp_updated_file="$(mktemp --suffix=.json)"
+    jq --sort-keys \
+      --argjson exclude_paths "${exclude_paths}" \
+      '.packages = (.packages // {})
+      | .packages[".github/workflows"] = (.packages[".github/workflows"] // {})
+      | .packages[".github/workflows"]["exclude-paths"] = $exclude_paths' \
+      "${output_file}" > "${tmp_updated_file}"
+    mv "${tmp_updated_file}" "${output_file}"
+    return 0
+  fi
 
   jq -n --sort-keys \
     --arg component "${wf}" \
     --arg initial_version "${initial_version}" \
     --arg changelog_path "${changelog_path}" \
     --argjson exclude_paths "${exclude_paths}" \
-    --arg bootstrap_sha "${bootstrap_sha}" \
     '{
       "packages": {
         ".github/workflows": {
@@ -141,21 +115,19 @@ write_workflow_config_json() {
           "tag-separator": "/"
         }
       }
-    }
-    | if $bootstrap_sha != "" then . + {"bootstrap-sha": $bootstrap_sha} else . end' > "${output_file}"
+    }' > "${output_file}"
 }
 
 # Generate the config and, unless --config-output-file is set, the manifest as well.
 generate_config() {
   local wf="$1"
-  local changelog_path="${wf}_changelog.md"
-  local initial_version bootstrap_sha config_file
+  local initial_version config_file
+
+  initial_version="${INITIAL_VERSION_DEFAULT}"
 
   if [[ -n "${config_output_file}" ]]; then
     # Validation / temp-file mode: write config to the caller-specified path only.
-    initial_version="$(get_initial_version "${wf}")"
-    bootstrap_sha="$(get_bootstrap_sha "${wf}")"
-    write_workflow_config_json "${wf}" "${config_output_file}" "${initial_version}" "${bootstrap_sha}"
+    write_workflow_config_json "${wf}" "${config_output_file}" "${initial_version}"
     return 0
   fi
 
@@ -163,14 +135,7 @@ generate_config() {
   mkdir -p "${working_dir}/${workflow_config_dir}"
   config_file="${working_dir}/${workflow_config_dir}/${wf}-config.json"
 
-  mkdir -p "${working_dir}/${WORKFLOWS_PATH}"
-  if [[ ! -f "${working_dir}/${WORKFLOWS_PATH}/${changelog_path}" ]]; then
-    printf '# Changelog\n\n' > "${working_dir}/${WORKFLOWS_PATH}/${changelog_path}"
-  fi
-
-  initial_version="$(get_initial_version "${wf}")"
-  bootstrap_sha="$(get_bootstrap_sha "${wf}")"
-  write_workflow_config_json "${wf}" "${config_file}" "${initial_version}" "${bootstrap_sha}"
+  write_workflow_config_json "${wf}" "${config_file}" "${initial_version}"
   echo "==> generated config: ${config_file}"
 
   local manifest_file="${working_dir}/${workflow_config_dir}/${wf}-manifest.json"

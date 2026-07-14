@@ -19,7 +19,7 @@ _SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 usage() {
   cat <<'EOF'
 Check that the on-disk Release Please config file for a workflow component is consistent
-with the current repository state.
+with the current repository state wrt to the "exclude-paths" field.
 
 Intended to be run in the target repository on every workflow file change, e.g. as a CI
 check, to ensure the workflow-specific Release Please configuration files are valid and
@@ -33,7 +33,6 @@ Options:
   --release-please-config-root <path>
                                  Folder containing the workflow-config/ subdirectory.
                                  Default: .github/release-please.
-  --working-dir <path>           Repository root to operate in. Default: current directory.
   --help                         Show this help.
 
 Exit codes:
@@ -60,10 +59,6 @@ parse_args() {
         ;;
       --release-please-config-root)
         release_please_config_root="${2:-}"
-        shift 2
-        ;;
-      --working-dir)
-        working_dir="${2:-}"
         shift 2
         ;;
       --help|-h)
@@ -97,11 +92,15 @@ main() {
   local workflow_config_dir="${release_please_config_root}/workflow-config"
   local existing_config="${working_dir}/${workflow_config_dir}/${workflow}-config.json"
   local tmp_config
+  local existing_exclude_paths_file
+  local fresh_exclude_paths_file
   tmp_config="$(mktemp --suffix=.json)"
+  existing_exclude_paths_file="$(mktemp --suffix=.json)"
+  fresh_exclude_paths_file="$(mktemp --suffix=.json)"
 
   # Ensure temporary files are removed on every exit path.
   cleanup() {
-    rm -f "${tmp_config}"
+    rm -f "${tmp_config}" "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}"
   }
   trap cleanup EXIT
 
@@ -110,23 +109,27 @@ main() {
     --release-please-config-root "${release_please_config_root}" \
     --config-output-file "${tmp_config}")
 
-  local existing_normalized fresh_normalized
-  existing_normalized="$(jq --sort-keys '.' "${existing_config}")"
-  fresh_normalized="$(jq --sort-keys '.' "${tmp_config}")"
+  local existing_exclude_paths fresh_exclude_paths
+  existing_exclude_paths="$(jq -c '(.packages[".github/workflows"]["exclude-paths"] // []) | sort' "${existing_config}")"
+  fresh_exclude_paths="$(jq -c '(.packages[".github/workflows"]["exclude-paths"] // []) | sort' "${tmp_config}")"
 
-  if [[ "${existing_normalized}" != "${fresh_normalized}" ]]; then
+  # Persist normalized values so patch output contains only the compared field.
+  jq '(.packages[".github/workflows"]["exclude-paths"] // []) | sort' "${existing_config}" > "${existing_exclude_paths_file}"
+  jq '(.packages[".github/workflows"]["exclude-paths"] // []) | sort' "${tmp_config}" > "${fresh_exclude_paths_file}"
+
+  if [[ "${existing_exclude_paths}" != "${fresh_exclude_paths}" ]]; then
     err "workflow config for '${workflow}' is out of date with the current repository content."
-    err "The config file must be up to date before a release PR can be created."
+    err "The exclude-paths field must be up to date before a release PR can be created."
     err "To update it, run gen-release-please-workflow-config.sh directly."
-    err "Delta (patch format):"
+    err "Delta for exclude-paths (patch format):"
 
     local patch_output
-    patch_output="$(git --no-pager diff --no-index --no-color -- "${existing_config}" "${tmp_config}" || true)"
+    patch_output="$(git --no-pager diff --no-index --no-color -- "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}" || true)"
     if [[ -n "${patch_output}" ]]; then
       echo "${patch_output}" >&2
     else
       # Fallback in environments without git; still emit a unified diff.
-      diff -u --label "a/${workflow_config_dir}/${workflow}-config.json" --label "b/${workflow_config_dir}/${workflow}-config.json" "${existing_config}" "${tmp_config}" >&2 || true
+      diff -u --label "a/${workflow_config_dir}/${workflow}-config.json:exclude-paths" --label "b/${workflow_config_dir}/${workflow}-config.json:exclude-paths" "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}" >&2 || true
     fi
     exit 8
   fi

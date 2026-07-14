@@ -168,7 +168,6 @@ check-workflow-config-uptodate.sh --workflow <name> [options]
 | ------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
 | `--workflow <name>`                   | **Required.** Workflow component name (without `.yml` extension). | —                        |
 | `--release-please-config-root <path>` | Folder containing the `workflow-config/` subdirectory.            | `.github/release-please` |
-| `--working-dir <path>`                | Repository root to operate in.                                    | current directory        |
 | `--help`                              | Print usage and exit.                                             | —                        |
 
 ---
@@ -220,8 +219,7 @@ gen-release-please-workflow-config.sh --workflow docs
 
 ```bash
 check-workflow-config-uptodate.sh \
-  --workflow docs \
-  --working-dir /path/to/target-repo
+  --workflow docs
 ```
 
 This should be run as a CI check in the target repository to catch config drift early.
