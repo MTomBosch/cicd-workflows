@@ -104,8 +104,8 @@ main() {
     --config-output-file "${tmp_config}")
 
   local existing_normalized fresh_normalized
-  existing_normalized="$(jq 'del(.packages[".github/workflows"]["initial-version"])' "${existing_config}")"
-  fresh_normalized="$(jq 'del(.packages[".github/workflows"]["initial-version"])' "${tmp_config}")"
+  existing_normalized="$(jq --sort-keys '.' "${existing_config}")"
+  fresh_normalized="$(jq --sort-keys '.' "${tmp_config}")"
   rm -f "${tmp_config}"
 
   if [[ "${existing_normalized}" != "${fresh_normalized}" ]]; then
