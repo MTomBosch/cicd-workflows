@@ -10,7 +10,6 @@
         ".github/workflows/codeql.yml",
         ".github/workflows/copyright.yml",
         ".github/workflows/cpp-coverage.yml",
-        ".github/workflows/daily_changelog.md",
         ".github/workflows/docs-cleanup.yml",
         ".github/workflows/docs-verify.yml",
         ".github/workflows/docs.yml",
