@@ -1,14 +1,6 @@
 name: release-please
 
 on:
-  push:
-    branches:
-      - main
-      - feature/**
-    paths:
-      - .github/workflows/*.yml
-      - .github/workflows/*_changelog.md
-      - .github/release-please/**
   workflow_dispatch:
     inputs:
       components:
