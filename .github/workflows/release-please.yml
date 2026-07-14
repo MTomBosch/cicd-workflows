@@ -1,4 +1,4 @@
-name: release-please
+name: Run release-please
 
 on:
   workflow_dispatch:
@@ -7,6 +7,13 @@ on:
         description: Component name (workflow name without .yml extension, or action name).
         required: true
         type: string
+      component-type:
+        description: Type of component to release.
+        required: true
+        type: choice
+        options:
+          - workflow
+          - action
       config-json-path:
         description: Path to the release-please config JSON file (relative to repo root).
         required: true
@@ -37,6 +44,7 @@ permissions:
 
 jobs:
   check-workflow-config:
+    if: inputs.component-type == 'workflow'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,21 +54,43 @@ jobs:
           .github/release-please-script/check-workflow-config-uptodate.sh \
             --workflow "${{ inputs.component-name }}"
 
-  release-pr:
-    needs: check-workflow-config
-    if: inputs.mode == 'pr'
+  action-release-pr:
+    if: inputs.component-type == 'action' && inputs.mode == 'pr'
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
           manifest-file: ${{ inputs.manifest-json-path }}
           dry-run: ${{ inputs.dry-run }}
 
-  github-release:
+  action-github-release:
+    if: inputs.component-type == 'action' && inputs.mode == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: ${{ inputs.config-json-path }}
+          manifest-file: ${{ inputs.manifest-json-path }}
+          dry-run: ${{ inputs.dry-run }}
+
+  workflow-release-pr:
     needs: check-workflow-config
-    if: inputs.mode == 'release'
+    if: inputs.component-type == 'workflow' && inputs.mode == 'pr'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: ${{ inputs.config-json-path }}
+          manifest-file: ${{ inputs.manifest-json-path }}
+          dry-run: ${{ inputs.dry-run }}
+
+  workflow-github-release:
+    needs: check-workflow-config
+    if: inputs.component-type == 'workflow' && inputs.mode == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
