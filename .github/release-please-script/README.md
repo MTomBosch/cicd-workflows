@@ -44,13 +44,14 @@ it at the target repo on GitHub. `gen-release-please-workflow-config.sh` and
 
 ## Token Requirements for `release-please.yml`
 
-When releasing **workflow components**, use an externally provided PAT (for example via
-`RELEASE_PLEASE_TOKEN`) that includes permission to modify workflow files.
+When releasing **workflow components** and storing the changelog file next to the workflow files, use an externally provided PAT (`RELEASE_PLEASE_TOKEN`) that includes permission to modify workflow files.
 
-Reason: GitHub treats changes under `.github/workflows/` as workflow changes, and the
+Reason: GitHub treats all file changes under `.github/workflows/` as workflow changes, and the
 repository workflow `permissions:` block alone is not sufficient to grant that capability
 to the default token in this scenario. Therefore, a PAT with the required scope must be
 provided to the release-please action.
+
+As an alternative you can define in the config.json file a pseudo absolute path for the changelog file, e.g. `/changelogs/<workflow>_changelog.md`. Release please interprets this as a path relative to the root of the repository, and will create the changelog file in that location. This allows you to keep the changelog outside of `.github/workflows/` and avoid the need for an external PAT.
 
 When releasing **action components**, the permissions already declared in
 `release-please.yml` are sufficient, and no external PAT is required.
