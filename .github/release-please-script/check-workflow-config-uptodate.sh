@@ -87,7 +87,6 @@ main() {
   fi
 
   require_cmd jq
-  require_cmd git
 
   local workflow_config_dir="${release_please_config_root}/workflow-config"
   local existing_config="${working_dir}/${workflow_config_dir}/${workflow}-config.json"
@@ -95,6 +94,8 @@ main() {
   local existing_exclude_paths_file
   local fresh_exclude_paths_file
   tmp_config="$(mktemp --suffix=.json)"
+  # I only want a unique temp file name but no existing file when running the gen-release-please-workflow-config.sh script, so I remove the file if it exists.
+  rm -f "${tmp_config}"
   existing_exclude_paths_file="$(mktemp --suffix=.json)"
   fresh_exclude_paths_file="$(mktemp --suffix=.json)"
 
@@ -102,7 +103,7 @@ main() {
   cleanup() {
     rm -f "${tmp_config}" "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}"
   }
-  trap cleanup EXIT
+  #trap cleanup EXIT
 
   (cd "${working_dir}" && "${_SCRIPT_DIR}/gen-release-please-workflow-config.sh" \
     --workflow "${workflow}" \
@@ -123,14 +124,11 @@ main() {
     err "To update it, run gen-release-please-workflow-config.sh directly."
     err "Delta for exclude-paths (patch format):"
 
-    local patch_output
-    patch_output="$(git --no-pager diff --no-index --no-color -- "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}" || true)"
-    if [[ -n "${patch_output}" ]]; then
-      echo "${patch_output}" >&2
-    else
-      # Fallback in environments without git; still emit a unified diff.
-      diff -u --label "a/${workflow_config_dir}/${workflow}-config.json:exclude-paths" --label "b/${workflow_config_dir}/${workflow}-config.json:exclude-paths" "${existing_exclude_paths_file}" "${fresh_exclude_paths_file}" >&2 || true
-    fi
+    diff -u \
+      --label "${existing_config}" \
+      --label "${tmp_config}" \
+      "${existing_exclude_paths_file}" \
+      "${fresh_exclude_paths_file}" >&2 || true
     exit 8
   fi
 
