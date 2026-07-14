@@ -14,7 +14,7 @@
         ".github/workflows/daily.yml",
         ".github/workflows/docs-cleanup.yml",
         ".github/workflows/docs-verify.yml",
-        ".github/workflows/changelogs/docs_changelog.md",
+        ".github/workflows/docs_changelog.md",
         ".github/workflows/format.yml",
         ".github/workflows/license-check.yml",
         ".github/workflows/on-pr.yml",
