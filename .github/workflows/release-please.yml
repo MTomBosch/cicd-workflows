@@ -25,13 +25,6 @@ on:
         required: true
         default: .github/release-please/actions-manifest.json
         type: string
-      mode:
-        description: Release Please mode.
-        required: true
-        type: choice
-        options:
-          - pr
-          - release
 
 permissions:
   contents: write
@@ -50,43 +43,12 @@ jobs:
           .github/release-please-script/check-workflow-config-uptodate.sh \
             --workflow "${{ inputs.component-name }}"
 
-  action-release-pr:
-    if: inputs.component-type == 'action' && inputs.mode == 'pr'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
-        with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-          config-file: ${{ inputs.config-json-path }}
-          manifest-file: ${{ inputs.manifest-json-path }}
-
-  action-github-release:
-    if: inputs.component-type == 'action' && inputs.mode == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
-        with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-          config-file: ${{ inputs.config-json-path }}
-          manifest-file: ${{ inputs.manifest-json-path }}
-
-  workflow-release-pr:
+  run-release-please:
     needs: check-workflow-config
-    if: inputs.component-type == 'workflow' && inputs.mode == 'pr'
+    if: always() && (needs.check-workflow-config.result == 'success' || needs.check-workflow-config.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
-        with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-          config-file: ${{ inputs.config-json-path }}
-          manifest-file: ${{ inputs.manifest-json-path }}
-
-  workflow-github-release:
-    needs: check-workflow-config
-    if: inputs.component-type == 'workflow' && inputs.mode == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: ${{ inputs.config-json-path }}
