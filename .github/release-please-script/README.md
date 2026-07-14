@@ -69,6 +69,15 @@ config cannot model per-file release streams cleanly. The script instead generat
 per-workflow `<workflow>-config.json` and `<workflow>-manifest.json` files in the target
 repo and passes them to Release Please with `--local` mode so they are resolved from disk.
 
+This generation step is required because Release Please package definitions are directory-
+based in this setup. For workflow components, the package must be set to
+`.github/workflows`, not to an individual workflow file path. To ensure only the selected
+workflow contributes changes, every other file in `.github/workflows` is written to the
+`exclude-paths` list in that workflow's config file. As files are added, removed, or
+renamed in `.github/workflows`, the generated config must be kept in sync; otherwise,
+changes from unrelated workflow files can be included accidentally in the selected
+workflow's changelog/release stream.
+
 ### For composite action components
 
 Composite actions are released using two static files that must already exist in the
