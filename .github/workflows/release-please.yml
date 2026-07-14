@@ -52,6 +52,7 @@ jobs:
       # ATTENTION: If the changelog file is within the .github/workflows folder, then this workflow needs some special permissions (workflow)
       # since Github assumes only workflow files are in this folder. Unfortunately these permissions cannot be given by the "permissions" block
       # in above YAML, but need to be provided to a PAT and then this PAT must be handed over to this workflow and then used by release-please.
+      # See https://github.com/orgs/community/discussions/26583#discussioncomment-3252440
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 #v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
