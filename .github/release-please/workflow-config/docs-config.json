@@ -2,7 +2,7 @@
   "bootstrap-sha": "f57b605a284ca117bcfd9f83ea427096faaac7d1",
   "packages": {
     ".github/workflows": {
-      "changelog-path": "../../changelogs/workflows/docs_changelog.md",
+      "changelog-path": "docs_changelog.md",
       "component": "docs",
       "exclude-paths": [
         ".github/workflows/_local_daily.yml",
