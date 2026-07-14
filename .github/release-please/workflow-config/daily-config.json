@@ -1,7 +1,7 @@
 {
   "packages": {
     ".github/workflows": {
-      "changelog-path": "daily_changelog.md",
+      "changelog-path": "/changelogs/daily_changelog.md",
       "component": "daily",
       "exclude-paths": [
         ".github/workflows/_local_daily.yml",
