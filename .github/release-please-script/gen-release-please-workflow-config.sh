@@ -66,6 +66,24 @@ get_initial_version() {
   echo "1.0.0"
 }
 
+# Preserve the top-level bootstrap-sha from an existing <workflow>-config.json, if present.
+# Returns an empty string when no existing file or no bootstrap-sha field is found.
+get_bootstrap_sha() {
+  local wf="$1"
+  local existing="${working_dir}/${workflow_config_dir}/${wf}-config.json"
+  local sha
+
+  if [[ -f "${existing}" ]]; then
+    sha="$(jq -r '."bootstrap-sha" // empty' "${existing}" 2>/dev/null || true)"
+    if [[ -n "${sha}" && "${sha}" != "null" ]]; then
+      echo "${sha}"
+      return 0
+    fi
+  fi
+
+  echo ""
+}
+
 # Build the exclude-paths JSON array for a workflow by scanning the workflows
 # directory for all *.yml/*.yaml files and excluding the workflow itself.
 compute_exclude_paths() {
@@ -95,6 +113,7 @@ write_workflow_config_json() {
   local wf="$1"
   local output_file="$2"
   local initial_version="${3:-}"
+  local bootstrap_sha="${4:-}"
   local changelog_path="${wf}_changelog.md"
   local exclude_paths
 
@@ -108,6 +127,7 @@ write_workflow_config_json() {
     --arg initial_version "${initial_version}" \
     --arg changelog_path "${changelog_path}" \
     --argjson exclude_paths "${exclude_paths}" \
+    --arg bootstrap_sha "${bootstrap_sha}" \
     '{
       "packages": {
         ".github/workflows": {
@@ -121,19 +141,21 @@ write_workflow_config_json() {
           "tag-separator": "/"
         }
       }
-    }' > "${output_file}"
+    }
+    | if $bootstrap_sha != "" then . + {"bootstrap-sha": $bootstrap_sha} else . end' > "${output_file}"
 }
 
 # Generate the config and, unless --config-output-file is set, the manifest as well.
 generate_config() {
   local wf="$1"
   local changelog_path="${wf}_changelog.md"
-  local initial_version config_file
+  local initial_version bootstrap_sha config_file
 
   if [[ -n "${config_output_file}" ]]; then
     # Validation / temp-file mode: write config to the caller-specified path only.
     initial_version="$(get_initial_version "${wf}")"
-    write_workflow_config_json "${wf}" "${config_output_file}" "${initial_version}"
+    bootstrap_sha="$(get_bootstrap_sha "${wf}")"
+    write_workflow_config_json "${wf}" "${config_output_file}" "${initial_version}" "${bootstrap_sha}"
     return 0
   fi
 
@@ -147,7 +169,8 @@ generate_config() {
   fi
 
   initial_version="$(get_initial_version "${wf}")"
-  write_workflow_config_json "${wf}" "${config_file}" "${initial_version}"
+  bootstrap_sha="$(get_bootstrap_sha "${wf}")"
+  write_workflow_config_json "${wf}" "${config_file}" "${initial_version}" "${bootstrap_sha}"
   echo "==> generated config: ${config_file}"
 
   local manifest_file="${working_dir}/${workflow_config_dir}/${wf}-manifest.json"
