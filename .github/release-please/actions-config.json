@@ -1,7 +1,7 @@
 {
-  "bootstrap-sha": "17318d27366522721504b60040590dc822264a38",
   "packages": {
     ".github/actions/deploy-versioned-pages": {
+      "bootstrap-sha": "17318d27366522721504b60040590dc822264a38",
       "release-type": "simple",
       "component": "deploy-versioned-pages",
       "include-component-in-tag": true,
