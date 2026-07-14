@@ -1,0 +1,37 @@
+{
+  "packages": {
+    ".github/workflows": {
+      "changelog-path": "daily_changelog.md",
+      "component": "daily",
+      "exclude-paths": [
+        ".github/workflows/_local_daily.yml",
+        ".github/workflows/_local_on_pr.yml",
+        ".github/workflows/bzlmod-lock-check.yml",
+        ".github/workflows/codeql.yml",
+        ".github/workflows/copyright.yml",
+        ".github/workflows/cpp-coverage.yml",
+        ".github/workflows/daily_changelog.md",
+        ".github/workflows/docs-cleanup.yml",
+        ".github/workflows/docs-verify.yml",
+        ".github/workflows/docs.yml",
+        ".github/workflows/docs_changelog.md",
+        ".github/workflows/format.yml",
+        ".github/workflows/license-check.yml",
+        ".github/workflows/on-pr.yml",
+        ".github/workflows/qnx-build.yml",
+        ".github/workflows/release-please.yml",
+        ".github/workflows/required-approvals.yml",
+        ".github/workflows/rust-coverage.yml",
+        ".github/workflows/score-pr-checks.yml",
+        ".github/workflows/static-analysis.yml",
+        ".github/workflows/template-sync.yml",
+        ".github/workflows/tests.yml"
+      ],
+      "include-component-in-tag": true,
+      "include-v-in-tag": true,
+      "initial-version": "1.0.0",
+      "release-type": "simple",
+      "tag-separator": "/"
+    }
+  }
+}

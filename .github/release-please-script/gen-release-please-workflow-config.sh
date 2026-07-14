@@ -49,10 +49,13 @@ require_cmd() {
 
 # Build the exclude-paths JSON array for a workflow by scanning the workflows
 # directory for all files and excluding only the workflow file itself.
+# The workflow's own changelog path is always excluded, even if the file does
+# not exist yet.
 compute_exclude_paths() {
   local current_wf_name="$1"
   local current_wf_file_yml="${current_wf_name}.yml"
   local current_wf_file_yaml="${current_wf_name}.yaml"
+  local current_wf_changelog="${current_wf_name}_changelog.md"
   local -a excludes
   local filepath filename
 
@@ -63,8 +66,10 @@ compute_exclude_paths() {
     fi
   done < <(find "${working_dir}/${WORKFLOWS_PATH}" -maxdepth 1 -type f | sort)
 
+  excludes+=(".github/workflows/${current_wf_changelog}")
+
   if [[ ${#excludes[@]} -gt 0 ]]; then
-    printf '%s\n' "${excludes[@]}" | jq -R . | jq -s .
+    printf '%s\n' "${excludes[@]}" | jq -R . | jq -s 'unique'
   else
     echo "[]"
   fi
